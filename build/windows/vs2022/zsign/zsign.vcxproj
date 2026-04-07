@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>./src;../include;../../../../src;../../../../src/common;../include/zlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./src;../../../../src;../../../../src/common;../../../../src/third-party/zlib;../include;</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -121,7 +121,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>./src;../include;../../../../src;../../../../src/common;../include/zlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./src;../../../../src;../../../../src/common;../../../../src/third-party/zlib;../include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,6 +153,63 @@
     <ClCompile Include="..\..\..\..\src\certcheck.cpp" />
     <ClCompile Include="src\getopt.cpp" />
     <ClCompile Include="src\iconv.cpp" />
+    <ClCompile Include="..\..\..\..\src\third-party\minizip\ioapi.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\minizip\iowin32.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\minizip\zip.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\minizip\unzip.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\adler32.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\compress.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\crc32.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\deflate.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\gzclose.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\gzlib.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\gzread.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\gzwrite.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\infback.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\inffast.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\inflate.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\inftrees.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\trees.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\uncompr.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\third-party\zlib\zutil.c">
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\src\archo.h" />

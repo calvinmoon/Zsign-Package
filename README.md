@@ -11,7 +11,7 @@ If this tool helps you, please give it a ⭐ **star** — [zhlynn](https://githu
 ### macOS
 
 ```bash
-brew install pkg-config openssl minizip-ng
+brew install pkg-config openssl
 git clone https://github.com/zhlynn/zsign.git
 cd zsign/build/macos
 make clean && make
@@ -22,7 +22,7 @@ make clean && make
 #### Ubuntu / Debian
 
 ```bash
-sudo apt-get install -y git g++ pkg-config libssl-dev libminizip-ng-dev
+sudo apt-get install -y git g++ pkg-config libssl-dev
 git clone https://github.com/zhlynn/zsign.git
 cd zsign/build/linux
 make clean && make
@@ -33,17 +33,13 @@ make clean && make
 Install `epel-release` first:
 
 ```bash
-# RHEL / CentOS / Alma / Rocky 8
-sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-
-# RHEL / CentOS / Alma / Rocky 9
-sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+sudo yum -y install epel-release
 ```
 
 Then build:
 
 ```bash
-sudo yum install -y git gcc-c++ pkg-config openssl-devel minizip-ng-devel
+sudo yum install -y git gcc-c++ pkg-config openssl-devel
 git clone https://github.com/zhlynn/zsign.git
 cd zsign/build/linux
 make clean && make
