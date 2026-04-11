@@ -17,3 +17,5 @@ test/packages/*
 packages/
 CLAUDE.md
 .claude/
+compile_commands.json
+.cache/
