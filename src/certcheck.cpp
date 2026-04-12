@@ -697,7 +697,14 @@ int CheckCertificate(const string& strFilePath, const string& strPassword)
 		ZLog::Print(">>> OCSP:\tSkipped (non-WWDR issuer)\n");
 		retCode = expired ? 2 : 0;
 	} else {
+#ifdef _WIN32
+		WSADATA wsaData;
+		WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 		OCSPResult ocspResult = PerformOCSP(cert, issuer);
+#ifdef _WIN32
+		WSACleanup();
+#endif
 		retCode = PrintOCSPResult(ocspResult);
 		if (expired && retCode == 0) retCode = 2;
 		X509_free(issuer);
