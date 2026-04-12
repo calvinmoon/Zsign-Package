@@ -17,6 +17,19 @@
 #include <openssl/x509v3.h>
 #include <ctime>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+typedef int ssize_t;
+#define OCSP_CLOSE_SOCKET(s) closesocket(s)
+#else
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#define OCSP_CLOSE_SOCKET(s) close(s)
+#endif
+
 // ─── helpers ───────────────────────────────────────────────────────
 
 static string SerialToHex(X509* cert)
@@ -382,18 +395,56 @@ struct OCSPResult {
 	string errorDetail;
 };
 
+static bool ExtractOCSPUrl(X509* cert, string& host, string& port, string& path)
+{
+	AUTHORITY_INFO_ACCESS* aia = (AUTHORITY_INFO_ACCESS*)X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
+	if (!aia) return false;
+	for (int i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
+		ACCESS_DESCRIPTION* ad = sk_ACCESS_DESCRIPTION_value(aia, i);
+		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
+		if (ad->location->type != GEN_URI) continue;
+		const unsigned char* uriData = ASN1_STRING_get0_data(ad->location->d.uniformResourceIdentifier);
+		int uriLen = ASN1_STRING_length(ad->location->d.uniformResourceIdentifier);
+		if (!uriData || uriLen <= 0) continue;
+		string url((const char*)uriData, uriLen);
+		// parse http://host[:port]/path
+		size_t schemeEnd = url.find("://");
+		if (schemeEnd == string::npos) continue;
+		size_t hostStart = schemeEnd + 3;
+		size_t pathStart = url.find('/', hostStart);
+		string hostPort = (pathStart != string::npos) ? url.substr(hostStart, pathStart - hostStart) : url.substr(hostStart);
+		path = (pathStart != string::npos) ? url.substr(pathStart) : "/";
+		size_t colonPos = hostPort.find(':');
+		if (colonPos != string::npos) {
+			host = hostPort.substr(0, colonPos);
+			port = hostPort.substr(colonPos + 1);
+		} else {
+			host = hostPort;
+			port = "80";
+		}
+		AUTHORITY_INFO_ACCESS_free(aia);
+		return true;
+	}
+	AUTHORITY_INFO_ACCESS_free(aia);
+	return false;
+}
+
 static OCSPResult PerformOCSP(X509* cert, X509* issuer)
 {
 	OCSPResult result;
 	result.status = "Error";
 	if (!cert || !issuer) { result.errorDetail = "Missing certificate or issuer"; return result; }
 
-	const char* ocspHost = "ocsp.apple.com";
-	const char* ocspPath = "/ocsp03-wwdrg3";
-	string issuerCN = GetNameField(X509_get_subject_name(issuer), NID_commonName);
-	if (issuerCN.find("G6") != string::npos) ocspPath = "/ocsp03-wwdrg6";
-	else if (issuerCN.find("G3") != string::npos) ocspPath = "/ocsp03-wwdrg3";
-	else if (issuerCN.find("G2") != string::npos) ocspPath = "/ocsp03-wwdrg2";
+	string ocspHost, ocspPort, ocspPath;
+	if (!ExtractOCSPUrl(cert, ocspHost, ocspPort, ocspPath)) {
+		ocspHost = "ocsp.apple.com";
+		ocspPort = "80";
+		ocspPath = "/ocsp03-wwdr01";
+		string issuerCN = GetNameField(X509_get_subject_name(issuer), NID_commonName);
+		if (issuerCN.find("G6") != string::npos) ocspPath = "/ocsp03-wwdrg6";
+		else if (issuerCN.find("G3") != string::npos) ocspPath = "/ocsp03-wwdrg3";
+		else if (issuerCN.find("G2") != string::npos) ocspPath = "/ocsp03-wwdrg2";
+	}
 
 	OCSP_CERTID* certId = OCSP_cert_to_id(EVP_sha1(), cert, issuer);
 	if (!certId) { result.errorDetail = "Failed to create cert ID"; return result; }
@@ -405,35 +456,76 @@ static OCSPResult PerformOCSP(X509* cert, X509* issuer)
 	int derReqLen = i2d_OCSP_REQUEST(req, &derReq);
 	if (derReqLen <= 0 || !derReq) { OCSP_REQUEST_free(req); result.errorDetail = "Serialize failed"; return result; }
 
-	BIO* bio = BIO_new_connect("ocsp.apple.com:80");
-	if (!bio) { OPENSSL_free(derReq); OCSP_REQUEST_free(req); result.errorDetail = "Connection failed"; return result; }
-	if (BIO_do_connect(bio) <= 0) {
-		BIO_free_all(bio); OPENSSL_free(derReq); OCSP_REQUEST_free(req);
-		result.errorDetail = "Network error"; return result;
+	struct addrinfo hints, *res = NULL;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(ocspHost.c_str(), ocspPort.c_str(), &hints, &res) != 0 || !res) {
+		OPENSSL_free(derReq); OCSP_REQUEST_free(req);
+		result.errorDetail = "DNS failed"; return result;
 	}
+	int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (sock < 0) {
+		freeaddrinfo(res); OPENSSL_free(derReq); OCSP_REQUEST_free(req);
+		result.errorDetail = "Socket failed"; return result;
+	}
+	if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
+		freeaddrinfo(res); OCSP_CLOSE_SOCKET(sock); OPENSSL_free(derReq); OCSP_REQUEST_free(req);
+		result.errorDetail = "Connect failed"; return result;
+	}
+	freeaddrinfo(res);
 
 	char hdr[512];
-	snprintf(hdr, sizeof(hdr), "POST %s HTTP/1.0\r\nHost: %s\r\nContent-Type: application/ocsp-request\r\nContent-Length: %d\r\n\r\n", ocspPath, ocspHost, derReqLen);
-	if (BIO_puts(bio, hdr) <= 0 || BIO_write(bio, derReq, derReqLen) != derReqLen) {
-		BIO_free_all(bio); OPENSSL_free(derReq); OCSP_REQUEST_free(req); result.errorDetail = "Send failed"; return result;
-	}
-	(void)BIO_flush(bio);
+	snprintf(hdr, sizeof(hdr),
+		"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: zsign\r\nContent-Type: application/ocsp-request\r\nContent-Length: %d\r\n\r\n",
+		ocspPath.c_str(), ocspHost.c_str(), derReqLen);
+	string request(hdr);
+	request.append((const char*)derReq, derReqLen);
 	OPENSSL_free(derReq);
 	OCSP_REQUEST_free(req);
 
+	const char* sendPtr = request.data();
+	size_t sendRemain = request.size();
+	while (sendRemain > 0) {
+		ssize_t sent = send(sock, sendPtr, sendRemain, 0);
+		if (sent <= 0) { OCSP_CLOSE_SOCKET(sock); result.errorDetail = "Send failed"; return result; }
+		sendPtr += sent;
+		sendRemain -= sent;
+	}
+
+	// read response: first read until headers are complete
 	string resp;
-	char rb[4096]; int br;
-	while ((br = BIO_read(bio, rb, sizeof(rb))) > 0) resp.append(rb, br);
-	BIO_free_all(bio);
-	if (resp.empty()) { result.errorDetail = "Empty response"; return result; }
+	char rb[4096];
+	while (resp.find("\r\n\r\n") == string::npos) {
+		ssize_t br = recv(sock, rb, sizeof(rb), 0);
+		if (br <= 0) break;
+		resp.append(rb, br);
+	}
 
 	size_t he = resp.find("\r\n\r\n");
-	if (he == string::npos) { result.errorDetail = "Invalid response"; return result; }
-	const unsigned char* ob = (const unsigned char*)resp.data() + he + 4;
-	long ol = (long)(resp.size() - he - 4);
-	if (ol <= 0) { result.errorDetail = "Empty body"; return result; }
+	if (he == string::npos) { OCSP_CLOSE_SOCKET(sock); result.errorDetail = "Invalid response"; return result; }
 
-	OCSP_RESPONSE* oresp = d2i_OCSP_RESPONSE(NULL, &ob, ol);
+	// parse Content-Length and read remaining body
+	long contentLength = 0;
+	{
+		size_t clPos = resp.find("Content-Length:");
+		if (clPos == string::npos) clPos = resp.find("content-length:");
+		if (clPos != string::npos) contentLength = atol(resp.c_str() + clPos + 15);
+	}
+	size_t bodyHave = resp.size() - he - 4;
+	while (contentLength > 0 && bodyHave < (size_t)contentLength) {
+		ssize_t br = recv(sock, rb, sizeof(rb), 0);
+		if (br <= 0) break;
+		resp.append(rb, br);
+		bodyHave += br;
+	}
+	OCSP_CLOSE_SOCKET(sock);
+
+	const unsigned char* bodyPtr = (const unsigned char*)resp.data() + he + 4;
+	long bodyLen = (long)(resp.size() - he - 4);
+	if (bodyLen <= 0) { result.errorDetail = "Empty body"; return result; }
+
+	OCSP_RESPONSE* oresp = d2i_OCSP_RESPONSE(NULL, &bodyPtr, bodyLen);
 	if (!oresp) { result.errorDetail = "Parse failed"; return result; }
 	if (OCSP_response_status(oresp) != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
 		OCSP_RESPONSE_free(oresp); result.errorDetail = "OCSP error"; return result;
