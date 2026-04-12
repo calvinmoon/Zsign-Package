@@ -121,7 +121,8 @@ bool ZBundle::GetObjectsToSign(const string& strFolder, jvalue& jvInfo)
 	}
 	
 	ZFile::EnumFolder(strFolder.c_str(), true, NULL, [&](bool bFolder, const string& strPath) {
-		if (bFolder || string::npos != strPath.find(".dSYM")) {
+		if (bFolder || string::npos != strPath.find(".dSYM") ||
+			string::npos != strPath.find("_WatchKitStub")) {
 			return false;
 		}
 		bool bMachO = false;
