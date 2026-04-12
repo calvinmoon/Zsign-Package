@@ -585,11 +585,11 @@ static void PrintCertInfo(X509* cert, const string& fileTypeStr, bool showSigned
 	ZLog::PrintV(">>> Issued:\t%s\n", issuedStr.c_str());
 
 	if (daysLeft < 0) {
-		ZLog::PrintV(">>> Expires:\t%s (EXPIRED %d days ago)\n", expiresStr.c_str(), -daysLeft);
+		ZLog::ErrorV(">>> Expires:\t%s (EXPIRED %d days ago)\n", expiresStr.c_str(), -daysLeft);
 	} else if (daysLeft < 30) {
-		ZLog::PrintV(">>> Expires:\t%s (%d days remaining!)\n", expiresStr.c_str(), daysLeft);
+		ZLog::WarnV(">>> Expires:\t%s (%d days remaining!)\n", expiresStr.c_str(), daysLeft);
 	} else {
-		ZLog::PrintV(">>> Expires:\t%s (%d days remaining)\n", expiresStr.c_str(), daysLeft);
+		ZLog::SuccessV(">>> Expires:\t%s (%d days remaining)\n", expiresStr.c_str(), daysLeft);
 	}
 
 	ZLog::PrintV(">>> Algorithm:\t%s\n", keyAlgo.c_str());
