@@ -464,12 +464,17 @@ static OCSPResult PerformOCSP(X509* cert, X509* issuer)
 		OPENSSL_free(derReq); OCSP_REQUEST_free(req);
 		result.errorDetail = "DNS failed"; return result;
 	}
+#ifdef _WIN32
+	SOCKET sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (sock == INVALID_SOCKET) {
+#else
 	int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 	if (sock < 0) {
+#endif
 		freeaddrinfo(res); OPENSSL_free(derReq); OCSP_REQUEST_free(req);
 		result.errorDetail = "Socket failed"; return result;
 	}
-	if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
+	if (connect(sock, res->ai_addr, (int)res->ai_addrlen) < 0) {
 		freeaddrinfo(res); OCSP_CLOSE_SOCKET(sock); OPENSSL_free(derReq); OCSP_REQUEST_free(req);
 		result.errorDetail = "Connect failed"; return result;
 	}
@@ -487,7 +492,7 @@ static OCSPResult PerformOCSP(X509* cert, X509* issuer)
 	const char* sendPtr = request.data();
 	size_t sendRemain = request.size();
 	while (sendRemain > 0) {
-		ssize_t sent = send(sock, sendPtr, sendRemain, 0);
+		ssize_t sent = send(sock, sendPtr, (int)sendRemain, 0);
 		if (sent <= 0) { OCSP_CLOSE_SOCKET(sock); result.errorDetail = "Send failed"; return result; }
 		sendPtr += sent;
 		sendRemain -= sent;

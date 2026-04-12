@@ -1016,7 +1016,7 @@ bool jvalue::_read_data_from_file(const char* path, string& data)
 		fclose(fp);
 		return false;
 	}
-	// Cap at 256 MB — plist/JSON files processed by zsign are always far smaller.
+	// Cap at 256 MB - plist/JSON files processed by zsign are always far smaller.
 	static const int64_t MAX_READ = (int64_t)256 * 1024 * 1024;
 	if (to_read > MAX_READ) {
 		fclose(fp);
