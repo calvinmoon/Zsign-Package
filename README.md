@@ -1,10 +1,46 @@
-# zsign
+# zsign — Fast Cross-Platform iOS Code Signing Tool
 
-A fast, cross-platform codesign alternative for iOS 12+. Re-sign iOS apps (.ipa, Mach-O, .app bundles) with custom certificates and provisioning profiles.
+[![Build](https://github.com/zhlynn/zsign/actions/workflows/build.yml/badge.svg)](https://github.com/zhlynn/zsign/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Android%20%7C%20FreeBSD-lightgrey)](#build)
+[![C++11](https://img.shields.io/badge/C%2B%2B-11-00599C.svg)](#build)
+[![Stars](https://img.shields.io/github/stars/zhlynn/zsign?style=social)](https://github.com/zhlynn/zsign)
 
-**Supported platforms:** macOS, Linux, Windows, Android, FreeBSD
+**Languages:** English | [简体中文](README.zh-CN.md)
+
+**zsign** is a fast, open-source, cross-platform `codesign` alternative for iOS 12+. It re-signs `.ipa` packages, Mach-O binaries, and `.app` bundles with custom certificates and provisioning profiles — without Xcode, without macOS. Ideal for iOS app re-signing, dylib injection, CI/CD pipelines, and IPA distribution workflows on Linux and Windows servers.
+
+**Keywords:** iOS code signing · codesign alternative · re-sign IPA · Mach-O signing · dylib injection · iOS CI/CD · Linux iOS signing · Windows iOS signing · p12 signing · provisioning profile · OCSP check · ad-hoc signature
 
 If this tool helps you, please give it a ⭐ **star** — [zhlynn](https://github.com/zhlynn)
+
+## Table of Contents
+
+- [Features](#features)
+- [Supported Platforms](#supported-platforms)
+- [Build](#build)
+- [Usage](#usage)
+- [Examples](#examples)
+- [Certificate Check (-C)](#certificate-check--c)
+- [Fast Re-signing](#fast-re-signing)
+- [License](#license)
+
+## Features
+
+- **Fast IPA re-signing** with persistent `.zsign_cache` — subsequent signs skip unchanged Mach-Os
+- **Cross-platform** — runs on macOS, Linux, Windows, Android, and FreeBSD (no Xcode required)
+- **Dylib injection / removal** — `LC_LOAD_DYLIB` and `LC_LOAD_WEAK_DYLIB` support
+- **Multi-profile signing** — per-extension provisioning profiles for apps with extensions
+- **Bundle editing** — change bundle ID, display name, version, minimum OS version, entitlements
+- **Ad-hoc signing** — sign without a developer certificate
+- **Certificate / OCSP check** — inspect certificates in `.ipa`, `.p12`, `.mobileprovision`, `.cer`, `.pem`, or Mach-O
+- **Metadata extraction** — pull `Info.plist` fields and app icon to `metadata.json` + PNG
+- **Bundle cleanup** — remove app extensions, watch apps, `UISupportedDevices`
+- **Files app integration** — toggle `UISupportsDocumentBrowser` and `UIFileSharingEnabled`
+
+## Supported Platforms
+
+macOS · Linux · Windows · Android · FreeBSD
 
 ## Build
 
@@ -206,7 +242,21 @@ zsign -C -k dev.p12 -p 123 -m dev.prov -o output.ipa demo.ipa
 
 ## Fast Re-signing
 
-Unzip the IPA first, then sign the extracted folder. On the first sign, zsign caches signature data in `.zsign_cache`. Subsequent re-signs with different assets reuse the cache, making the process significantly faster.
+Unzip the IPA first, then sign the extracted folder. On the first sign, zsign caches signature data in `.zsign_cache`. Subsequent re-signs with different assets reuse the cache, making the process significantly faster — a key advantage over running `codesign` from scratch on every build.
+
+## FAQ
+
+**Q: Does zsign require macOS or Xcode?**
+No. zsign runs natively on Linux, Windows, macOS, Android, and FreeBSD without Xcode or Apple's `codesign` binary.
+
+**Q: Can I use zsign in CI/CD pipelines?**
+Yes. zsign is a single static-linkable binary designed for automation — Linux runners, Docker images, and Windows build agents all work.
+
+**Q: Does zsign support SHA256-only code directories?**
+Yes, via `-2` / `--sha256_only`.
+
+**Q: How does zsign compare to Apple's `codesign`?**
+zsign is cross-platform, scriptable on non-Apple hosts, supports dylib injection out of the box, and uses a signature cache for fast re-signing.
 
 ## License
 
