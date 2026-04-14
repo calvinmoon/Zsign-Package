@@ -41,19 +41,20 @@ jobs:
 
       - name: build
         run: |
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
+          VERSION_FLAGS=()
+          [ -n "$VER" ] && VERSION_FLAGS=("-DZSIGN_VERSION=\"${VER}\"")
           if [ "${{ matrix.cross }}" = "true" ]; then
             mkdir -p bin
             for f in src/third-party/zlib/*.c; do aarch64-linux-gnu-gcc -O3 -Wno-unused-result -I./src/third-party/zlib -c "$f" -o "$(basename "$f" .c).o"; done
             aarch64-linux-gnu-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/ioapi.c -o ioapi.o
             aarch64-linux-gnu-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/zip.c -o zip.o
             aarch64-linux-gnu-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/unzip.c -o unzip.o
-            aarch64-linux-gnu-g++ -std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS \
+            aarch64-linux-gnu-g++ -std=c++11 -O3 -Wno-unused-result "${VERSION_FLAGS[@]}" \
               -I./src -I./src/common -I./src/third-party/zlib \
               $(find src -name "*.cpp") \
               *.o \
@@ -61,7 +62,7 @@ jobs:
               -lssl -lcrypto \
               -o bin/zsign
           else
-            cd build/linux && make clean && make CXXFLAGS="-std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS" -j$(nproc)
+            cd build/linux && make clean && make VERSION="$VER" -j$(nproc)
             strip ../../bin/zsign
           fi
 
@@ -85,13 +86,12 @@ jobs:
 
       - name: build
         run: |
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
-          cd build/macos && make clean && make CXXFLAGS="-std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS" -j$(sysctl -n hw.ncpu)
+          cd build/macos && make clean && make VERSION="$VER" -j$(sysctl -n hw.ncpu)
           chmod +x ../../bin/zsign
 
       - name: smoke test
@@ -185,12 +185,13 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           set -e
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
+          VERSION_FLAGS=()
+          [ -n "$VER" ] && VERSION_FLAGS=("-DZSIGN_VERSION=\"${VER}\"")
           TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
           CXX=$TOOLCHAIN/bin/${{ matrix.ndk_target }}${API}-clang++
           DEPS=$PWD/android-deps
@@ -200,7 +201,7 @@ jobs:
           $CC -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/ioapi.c -o ioapi.o
           $CC -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/zip.c -o zip.o
           $CC -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/unzip.c -o unzip.o
-          $CXX -std=c++11 -O3 $VERSION_FLAGS \
+          $CXX -std=c++11 -O3 "${VERSION_FLAGS[@]}" \
             -I./src -I./src/common -I./src/third-party/zlib -I$DEPS/include \
             $(find src -name "*.cpp") \
             *.o \
@@ -225,21 +226,20 @@ jobs:
 
       - name: build image
         run: |
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
-          docker build --build-arg VERSION_FLAGS="$VERSION_FLAGS" -t zsign:latest -f - . <<'EOF'
+          docker build --build-arg VERSION="$VER" -t zsign:latest -f - . <<'EOF'
           FROM ubuntu:22.04 AS builder
-          ARG VERSION_FLAGS
+          ARG VERSION
           RUN apt-get update && \
               apt-get install -y g++ make pkg-config libssl-dev && \
               rm -rf /var/lib/apt/lists/*
           COPY . /src
           WORKDIR /src/build/linux
-          RUN make clean && make CXXFLAGS="-std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS" -j$(nproc) && strip ../../bin/zsign
+          RUN make clean && make VERSION="$VERSION" -j$(nproc) && strip ../../bin/zsign
 
           FROM ubuntu:22.04
           RUN apt-get update && \
@@ -268,23 +268,23 @@ jobs:
 
       - name: build static binary
         run: |
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
-          docker build --build-arg VERSION_FLAGS="$VERSION_FLAGS" -t zsign-musl -f - . <<'MUSL'
+          docker build --build-arg VERSION="$VER" -t zsign-musl -f - . <<'MUSL'
           FROM alpine:3.19 AS builder
-          ARG VERSION_FLAGS
+          ARG VERSION
           RUN apk add --no-cache g++ make pkgconf openssl-dev openssl-libs-static
           COPY . /src
           WORKDIR /src
-          RUN for f in src/third-party/zlib/*.c; do cc -O3 -I./src/third-party/zlib -c "$f"; done && \
+          RUN VF=""; [ -n "$VERSION" ] && VF="-DZSIGN_VERSION=\"$VERSION\""; \
+              for f in src/third-party/zlib/*.c; do cc -O3 -I./src/third-party/zlib -c "$f"; done && \
               cc -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/ioapi.c && \
               cc -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/zip.c && \
               cc -O3 -I./src -I./src/third-party/zlib -c src/third-party/minizip/unzip.c && \
-              mkdir -p bin && g++ -std=c++11 -O3 -static -Wno-unused-result $VERSION_FLAGS \
+              mkdir -p bin && g++ -std=c++11 -O3 -static -Wno-unused-result $VF \
             -include cstdint -include ctime \
             -I./src -I./src/common -I./src/third-party/zlib \
             $(pkg-config --cflags openssl) \
@@ -328,18 +328,19 @@ jobs:
 
       - name: build
         run: |
-          VERSION_FLAGS=""
+          VER=""
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\""
           fi
+          VERSION_FLAGS=()
+          [ -n "$VER" ] && VERSION_FLAGS=("-DZSIGN_VERSION=\"${VER}\"")
           mkdir -p bin
           for f in src/third-party/zlib/*.c; do arm-linux-gnueabihf-gcc -O3 -Wno-unused-result -I./src/third-party/zlib -c "$f" -o "$(basename "$f" .c).o"; done
           arm-linux-gnueabihf-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/ioapi.c -o ioapi.o
           arm-linux-gnueabihf-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/zip.c -o zip.o
           arm-linux-gnueabihf-gcc -O3 -Wno-unused-result -I./src -I./src/third-party/zlib -c src/third-party/minizip/unzip.c -o unzip.o
-          arm-linux-gnueabihf-g++ -std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS \
+          arm-linux-gnueabihf-g++ -std=c++11 -O3 -Wno-unused-result "${VERSION_FLAGS[@]}" \
             -I./src -I./src/common -I./src/third-party/zlib \
             $(find src -name "*.cpp") \
             *.o \
@@ -371,13 +372,13 @@ jobs:
           prepare: |
             pkg install -y openssl pkgconf gmake
           run: |
-            VERSION_FLAGS=""
+            VER=""
             case "$TAG_NAME" in
-              v*) VER=$(echo "$TAG_NAME" | sed 's/^v//'); VERSION_FLAGS="-DZSIGN_VERSION=\"${VER}\"" ;;
+              v*) VER=$(echo "$TAG_NAME" | sed 's/^v//') ;;
             esac
             cd build/linux
             gmake clean
-            gmake CXX=c++ CXXFLAGS="-std=c++11 -O3 -Wno-unused-result $VERSION_FLAGS" -j$(sysctl -n hw.ncpu)
+            gmake CXX=c++ VERSION="$VER" -j$(sysctl -n hw.ncpu)
             strip ../../bin/zsign
             ../../bin/zsign -v
 
