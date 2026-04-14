@@ -115,7 +115,14 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: build
-        run: msbuild build\windows\vs2022\zsign.sln /p:Configuration=Release /p:Platform=x64 /m
+        shell: pwsh
+        run: |
+          $defs = ""
+          if ("${{ github.ref_name }}" -like "v*") {
+            $ver = "${{ github.ref_name }}".Substring(1)
+            $defs = "ZSIGN_VERSION=\`"$ver\`""
+          }
+          msbuild build\windows\vs2022\zsign.sln /p:Configuration=Release /p:Platform=x64 /p:ExtraDefines="$defs" /m
 
       - name: smoke test
         run: .\build\windows\vs2022\x64\Release\zsign.exe -v

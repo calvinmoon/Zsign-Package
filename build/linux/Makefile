@@ -12,7 +12,7 @@ INCLUDES = -I../../src -I../../src/common -I../../src/third-party/zlib
 INCLUDES += $(OPENSSL_INCLUDE)
 
 # Version derived from git tag (strip leading 'v'); override with `make VERSION=x.y.z`
-VERSION ?= $(shell git -C ../.. describe --tags --abbrev=0 --always 2>/dev/null | sed 's/^v//')
+VERSION ?= $(shell git -C ../.. describe --tags --always 2>/dev/null | sed 's/^v//')
 ifeq ($(strip $(VERSION)),)
 VERSION := 0.0.0-dev
 endif
