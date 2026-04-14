@@ -16,7 +16,7 @@ VERSION ?= $(shell git -C ../.. describe --tags --always 2>/dev/null | sed 's/^v
 ifeq ($(strip $(VERSION)),)
 VERSION := 0.0.0-dev
 endif
-CXXFLAGS += -DZSIGN_VERSION=\"$(VERSION)\"
+CXXFLAGS += -DZSIGN_VERSION=$(VERSION)
 
 LIBS = $(OPENSSL_LIB)
 
